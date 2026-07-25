@@ -25,7 +25,7 @@
             id: 'gemini-launcher-button',
             label: 'Gemini',
             icon: 'https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg',
-            url: 'https://gemini.google.com/'
+            url: 'https://gemini.google.com/u/3/app'
         }
     ];
 
