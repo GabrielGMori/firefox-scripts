@@ -1,0 +1,47 @@
+/* Positions the Chat Buttons container (from chatButtons.uc.js) at the
+   far right of the tab strip, for setups where Firefox doesn't render a
+   native #titlebar-buttonbox (e.g. window manager draws decorations). */
+
+#TabsToolbar {
+    display: flex;
+}
+
+#chat-launcher-buttonbox {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    margin-right: 10px;
+    gap: 10px;
+}
+
+.chat-launcher-button {
+    -moz-appearance: none !important;
+    appearance: none !important;
+    box-sizing: content-box;
+    width: auto;
+    height: auto;
+    padding: 20px;        /* uniform x/y padding around the 16px icon = a 24x24 square */
+    margin: 0 2px;        /* x-spacing between buttons - unchanged from before */
+    border-radius: 4px;
+}
+
+.chat-launcher-button:hover {
+    background-color: rgb(50, 49, 55);
+}
+
+.chat-launcher-button[selected] {
+    /* Same subtle tint as hover, permanently on - visibly "active"
+       without a border or accent color. */
+    background-color: rgb(83, 83, 95);
+}
+
+.chat-launcher-button[selected]:hover {
+    background-color: rgb(84, 84, 93);
+}
+
+/* While a chat overlay is showing, the real tab underneath is still
+   technically "selected" internally, but should not look that way. */
+:root[chat-launcher-overlay-active] .tabbrowser-tab[visuallyselected] {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
