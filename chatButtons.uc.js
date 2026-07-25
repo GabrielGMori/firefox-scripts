@@ -203,33 +203,117 @@
             }
         }
 
-        // Only an explicit interaction with a real tab means "I want to
-        // leave the chat overlay." We use mousedown (not click) because
-        // Firefox switches tab selection on mousedown internally - using
-        // capture-phase mousedown guarantees our restore runs BEFORE
-        // Firefox's own selection switch, avoiding a race where we'd
-        // restore attributes onto a tab that's no longer the real
-        // selected tab (which left both the old and new tab looking
-        // selected at once).
+        /*
+        * Clicking a real tab.
+        *
+        * Capture phase is intentional:
+        * Firefox changes tab selection internally on mousedown.
+        * We restore the tab state before Firefox paints the new selection.
+        */
         gBrowser.tabContainer.addEventListener('mousedown', (event) => {
             if (event.target.closest('tab')) {
-                hideAllOverlays();
+                hideOverlayIfActive();
             }
         }, true);
 
-        // TabSelect is Firefox's authoritative signal that the selected tab
-        // changed. Use it as a catch-all for keyboard/tab strip selection
-        // changes, but guard against the double-select bug by only reacting
-        // when the overlay is currently active.
-        gBrowser.tabContainer.addEventListener('TabSelect', hideOverlayIfActive);
 
-        // Navigating from the URL bar can change the visible page without
-        // triggering a tab selection event, so also hide overlays when the
-        // URL bar receives focus.
-        let urlbar = document.getElementById('urlbar') || document.getElementById('urlbar-input');
+        /*
+        * Keyboard tab switching:
+        * Ctrl+Tab, Ctrl+PageUp/Down, etc.
+        */
+        gBrowser.tabContainer.addEventListener('TabSelect', () => {
+            hideOverlayIfActive();
+        });
+
+
+        /*
+        * URL bar navigation:
+        * Ctrl+L -> type -> Enter
+        */
+        const urlbar = document.getElementById('urlbar')
+            || document.getElementById('urlbar-input');
+
         if (urlbar) {
-            urlbar.addEventListener('focus', hideOverlayIfActive, true);
+            urlbar.addEventListener('focus', () => {
+                hideOverlayIfActive();
+            }, true);
+
+            urlbar.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    hideOverlayIfActive();
+                }
+            }, true);
         }
+
+
+        /*
+        * Bookmark clicks, history navigation,
+        * typed URLs, clicking links, redirects, etc.
+        *
+        * This watches the actual browser navigation.
+        */
+        gBrowser.addTabsProgressListener({
+
+            onStateChange(browser, webProgress, request, flags, status) {
+                if (!hiddenTabAttrs)
+                    return;
+
+                if (flags & Ci.nsIWebProgressListener.STATE_START) {
+                    hideAllOverlays();
+                }
+            },
+
+
+            onLocationChange(browser, webProgress, request, location) {
+                if (!hiddenTabAttrs)
+                    return;
+
+                hideAllOverlays();
+            },
+
+
+            QueryInterface: ChromeUtils.generateQI([
+                "nsIWebProgressListener",
+                "nsISupportsWeakReference"
+            ])
+        });
+
+
+        /*
+        * New tab opened from:
+        * - bookmarks configured to open new tabs
+        * - middle click
+        * - Ctrl+click
+        *
+        * Makes sure the overlay does not remain above the new tab.
+        */
+        gBrowser.tabContainer.addEventListener('TabOpen', () => {
+            hideOverlayIfActive();
+        });
+
+
+        /*
+        * Fallback for Firefox internal commands:
+        * bookmarks/history sometimes execute commands
+        * without immediately firing navigation events.
+        */
+        window.addEventListener('command', (event) => {
+            if (!hiddenTabAttrs)
+                return;
+
+            const target = event.target;
+
+            if (
+                target &&
+                (
+                    target.closest('#bookmarksMenu') ||
+                    target.closest('#PlacesToolbarItems') ||
+                    target.closest('#historyMenu')
+                )
+            ) {
+                hideAllOverlays();
+            }
+        }, true);
     }
 
     if (gBrowserInit.delayedStartupFinished) {
